@@ -112,6 +112,14 @@ class RazorpayWebhookController extends Controller
             'total' => $order->total,
             'source' => $source,
         ]);
+
+        // Sirf transition pe — verify() pehle kar chuka ho to dobara nahi.
+        app(\App\Services\ExpoPushService::class)->notifyUser(
+            $order->user,
+            'Order confirmed! 🎉',
+            "Payment successful. Order #{$order->id} • ₹{$order->total} — khana ban raha hai!",
+            ['type' => 'order_confirmed', 'order_id' => $order->id],
+        );
     }
 
     private function markFailed(Order $order, string $reason, string $source): void

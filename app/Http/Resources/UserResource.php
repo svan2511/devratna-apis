@@ -22,6 +22,7 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'phone' => $this->phone,
+            'default_address' => $this->default_address,
             'phone_verified' => $this->phone_verified_at !== null,
             'phone_verified_at' => $this->phone_verified_at?->toIso8601String(),
             'is_profile_complete' => $this->name !== null && $this->name !== '',

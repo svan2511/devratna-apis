@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Services\ExpoPushService;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,10 +44,15 @@ class OrderController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // --- Condition 0: shop open hai ya nahi (admin dashboard switch) ---
+        if (! (bool) cache('shop_open', true)) {
+            return $this->failure('Shop is closed right now. Please try again when we are open (7:30 AM – 11:00 PM).', 422);
+        }
+
         $data = $request->validate([
             'items' => 'required|array|min:1|max:50',
             'items.*.id' => 'required|integer|exists:menu_items,id',
-            'items.*.portion' => 'required|in:half,medium,full,single',
+            'items.*.portion' => 'required|in:quarter,half,medium,full,single',
             'items.*.qty' => 'required|integer|min:1|max:20',
             'lat' => 'required|numeric|between:-90,90',
             'lng' => 'required|numeric|between:-180,180',
@@ -68,9 +74,14 @@ class OrderController extends Controller
             if (! $dish) {
                 return $this->failure('An item in your cart is no longer available.', 422);
             }
-            $unit = match ($line['portion']) {
-                'full' => $dish->full_price,
-                'medium' => $dish->mid_price,
+            // Portion → price column. 3-tier dishes (mid_price set):
+            // quarter = smallest, half = middle, full = largest.
+            // 2-tier/single: half/quarter/single = half_price.
+            // 'medium' purane app versions ke liye rakha hai (= middle tier).
+            $unit = match (true) {
+                $line['portion'] === 'full' => $dish->full_price,
+                $line['portion'] === 'half' && $dish->mid_price !== null => $dish->mid_price,
+                $line['portion'] === 'medium' => $dish->mid_price,
                 default => $dish->half_price,
             };
             if ($unit === null || $unit <= 0) {
@@ -225,6 +236,12 @@ class OrderController extends Controller
             'total' => $order->total,
             'source' => 'verify',
         ]);
+        app(ExpoPushService::class)->notifyUser(
+            $order->user,
+            'Payment ho gaya! 🎉',
+            "Aapka payment safal raha (₹{$order->total}) — khana abhi ban raha hai!",
+            ['type' => 'order_confirmed', 'order_id' => $order->id],
+        );
 
         return $this->success(['order' => $this->publicOrder($order)], 'Payment successful! Your order is confirmed.');
     }
@@ -271,10 +288,15 @@ class OrderController extends Controller
             'subtotal' => $order->subtotal,
             'total' => $order->total,
             'status' => $order->status,
+            'fulfillment_status' => $order->fulfillment_status ?? 'new',
+            'kitchen_note' => $order->kitchen_note,
             'failure_reason' => $order->failure_reason,
             'items' => $order->items,
             'delivery_address' => $order->delivery_address,
             'created_at' => $order->created_at?->toIso8601String(),
+            'paid_at' => $order->paid_at?->toIso8601String(),
+            'ready_at' => $order->ready_at?->toIso8601String(),
+            'delivered_at' => $order->delivered_at?->toIso8601String(),
         ];
     }
 

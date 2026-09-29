@@ -79,6 +79,35 @@ class AuthController extends Controller
         return $this->success(['user' => new UserResource($user)], 'OK');
     }
 
+    /**
+     * Profile update — naam + default landmark address.
+     * Phone yahi se nahi badalta (wahi login identity hai).
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return $this->failure('Unauthenticated.', 401);
+        }
+
+        $data = $request->validate([
+            'name' => 'sometimes|string|min:2|max:100',
+            'default_address' => 'nullable|string|min:10|max:500',
+        ]);
+
+        if (array_key_exists('name', $data)) {
+            $user->name = trim($data['name']);
+        }
+        if (array_key_exists('default_address', $data)) {
+            $addr = $data['default_address'];
+            $user->default_address = $addr !== null && trim($addr) !== '' ? trim($addr) : null;
+        }
+        $user->save();
+
+        return $this->success(['user' => new UserResource($user->fresh())], 'Profile saved.');
+    }
+
     public function logout(Request $request): JsonResponse
     {
         try {

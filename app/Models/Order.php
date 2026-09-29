@@ -22,8 +22,12 @@ class Order extends Model
         'subtotal',
         'total',
         'status',
+        'fulfillment_status',
+        'kitchen_note',
         'failure_reason',
         'paid_at',
+        'ready_at',
+        'delivered_at',
         'razorpay_order_id',
         'razorpay_payment_id',
         'customer_lat',
@@ -42,6 +46,8 @@ class Order extends Model
             'total' => 'integer',
             'distance_m' => 'integer',
             'paid_at' => 'datetime',
+            'ready_at' => 'datetime',
+            'delivered_at' => 'datetime',
         ];
     }
 

@@ -30,6 +30,8 @@ class MenuItemResource extends JsonResource
             'veg' => (bool) $this->is_veg,
             'bestseller' => (bool) $this->is_bestseller,
             'image_key' => $this->image_key,
+            // Admin OFF kare to app item chipaye nahi — "not available" dikhaye.
+            'is_available' => (bool) $this->is_available,
         ];
     }
 }

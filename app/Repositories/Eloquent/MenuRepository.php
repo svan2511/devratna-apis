@@ -15,9 +15,11 @@ class MenuRepository implements MenuRepositoryInterface
      */
     public function fullMenu(): Collection
     {
+        // Saare items — available + unavailable dono. App unavailable ko
+        // "Not available today" dikhata hai; order time pe store() block karta hai.
         return Category::query()
             ->ordered()
-            ->with(['items' => fn ($query) => $query->available()->ordered()])
+            ->with(['items' => fn ($query) => $query->ordered()])
             ->get();
     }
 }
