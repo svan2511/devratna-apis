@@ -10,9 +10,13 @@ rm -f bootstrap/cache/*.php
 
 
 
-# Clear all caches
+# Clear all caches (DB-independent: cache:clear with database driver would fail
+# before migrations create the `cache` table — so force file driver here)
 echo "Clearing Laravel caches..."
-php artisan optimize:clear
+php artisan config:clear || true
+php artisan route:clear || true
+php artisan view:clear || true
+CACHE_STORE=file php artisan cache:clear || true
 
 # Wait for PostgreSQL
 echo "Waiting for PostgreSQL connection..."
