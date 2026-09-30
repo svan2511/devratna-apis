@@ -169,7 +169,7 @@ class MenuSeeder extends Seeder
             ['snacks', 'Mix Pakoda (250 gm)', '₹100', 100, 'Assorted monsoon fritters.', false, 'mix-pakoda'],
             ['snacks', 'Chole Samosa', '₹40', 40, 'Samosa topped with spicy chole.', false, null],
             ['snacks', 'Dahi Samosa', '₹50', 50, 'Samosa chaat with curd & chutneys.', false, null],
-            ['snacks', 'Bread Cutlet (2 Pcs)', '₹50', 50, 'Crisp bread cutlets with chutney.', false, null],
+            ['snacks', 'Bread Cutlet (2 Pcs)', '₹50', 50, 'Crisp bread cutlets with chutney.', false, 'bread-cutlet'],
 
             ['thali', 'Veg Thali', '₹80', 80, 'Sabji + Dal + Roti + Salad + Rice.', false, 'veg-thali'],
             ['thali', 'Special Thali', '₹120', 120, 'Paneer + Dal + 4 Roti + Raita + Rice + Salad.', true, 'special-veg-thali'],
@@ -237,7 +237,7 @@ class MenuSeeder extends Seeder
             ['maggi', 'Cheese Maggie', '₹110', 110, 'Topped with molten cheese.', false, 'cheez-maggie'],
 
             ['beverages', 'Tea', '₹20', 20, 'Kadak doodh chai.', false, 'tea'],
-            ['beverages', 'Masala Tea', '₹30', 30, 'Brewed with crushed spices.', false, null],
+            ['beverages', 'Masala Tea', '₹30', 30, 'Brewed with crushed spices.', false, 'tea'],
             ['beverages', 'Lemon Tea', '₹40', 40, 'Light & refreshing.', false, 'lemon-tea'],
             ['beverages', 'Black Tea', '₹30', 30, 'No-milk brew.', false, 'black-tea'],
             ['beverages', 'Green Tea', '₹40', 40, 'Light detox brew.', false, 'green-tea'],
