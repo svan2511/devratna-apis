@@ -86,6 +86,44 @@ class ShopAndMenuTest extends TestCase
             ->assertJsonStructure(['data' => ['shop_open', 'min_order', 'delivery_charge', 'radius_m']]);
     }
 
+    public function test_admin_settings_apply_instantly_to_status_and_orders(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        Sanctum::actingAs($admin);
+
+        // Admin radius 100m kar de — shop-status turant wahi bataye.
+        $this->putJson('/api/v1/admin/settings', [
+            'min_order' => 500,
+            'delivery_charge' => 40,
+            'radius_m' => 100,
+            'shop_open' => true,
+        ])->assertOk()->assertJsonPath('data.settings.radius_m', 100);
+
+        $this->getJson('/api/v1/shop-status')
+            ->assertOk()
+            ->assertJsonPath('data.radius_m', 100);
+
+        // 100m radius me ~350m door ka order reject hona chahiye.
+        $cat = \App\Models\Category::create(['name' => 'Geo Cat', 'slug' => 'geo-cat', 'sort_order' => 0]);
+        $item = \App\Models\MenuItem::create([
+            'category_id' => $cat->id,
+            'name' => 'Geo Dish',
+            'price_label' => '₹100',
+            'price_value' => 100,
+            'half_price' => 100,
+            'is_available' => true,
+            'sort_order' => 0,
+        ]);
+
+        $response = $this->postJson('/api/v1/orders', [
+            'items' => [['id' => $item->id, 'portion' => 'half', 'qty' => 6]],
+            'lat' => 30.2742000,
+            'lng' => 77.9951000,
+        ]);
+        $response->assertStatus(422);
+        $this->assertStringContainsString('delivery area', strtolower($response->json('message') ?? ''));
+    }
+
     public function test_quarter_portion_maps_to_smallest_price(): void
     {
         $user = User::factory()->create();

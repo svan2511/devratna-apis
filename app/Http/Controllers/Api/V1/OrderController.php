@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Services\ExpoPushService;
+use App\Services\ShopSettings;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,8 +45,11 @@ class OrderController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // Live shop rules — admin Settings se turant badalte hain.
+        $shop = ShopSettings::all();
+
         // --- Condition 0: shop open hai ya nahi (admin dashboard switch) ---
-        if (! (bool) cache('shop_open', true)) {
+        if (! $shop['shop_open']) {
             return $this->failure('Shop is closed right now. Please try again when we are open (7:30 AM – 11:00 PM).', 422);
         }
 
@@ -98,8 +102,8 @@ class OrderController extends Controller
         }
 
         // --- Condition 2: minimum food bill (delivery is extra) ---
-        $minOrder = (int) config('services.shop.min_order', 500);
-        $delivery = (int) config('services.shop.delivery_charge', 40);
+        $minOrder = $shop['min_order'];
+        $delivery = $shop['delivery_charge'];
         if ($total < $minOrder) {
             return $this->failure("Minimum food order is ₹{$minOrder} (+ ₹{$delivery} delivery). Add food worth ₹".($minOrder - $total).' more.', 422);
         }
@@ -111,7 +115,7 @@ class OrderController extends Controller
             (float) config('services.shop.lat'),
             (float) config('services.shop.lng'),
         );
-        $radius = (int) config('services.shop.radius_m', 1000);
+        $radius = $shop['radius_m'];
         if ($distance > $radius) {
             $radiusLabel = $radius >= 1000 && $radius % 1000 === 0
                 ? ($radius / 1000).' km'
