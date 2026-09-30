@@ -94,6 +94,35 @@ class OrderStatusPushTest extends TestCase
         $this->assertContains($order->id, array_column($list, 'id'));
     }
 
+    public function test_admin_order_list_exposes_delivery_gps(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $customer = User::factory()->create();
+        Sanctum::actingAs($admin);
+
+        $order = Order::create([
+            'user_id' => $customer->id,
+            'items' => [['id' => 1, 'name' => 'Dal Makhani', 'portion' => 'full', 'qty' => 3, 'unit' => 180]],
+            'delivery_address' => 'H.No 12, Lane 3, Clement Town',
+            'subtotal' => 540,
+            'total' => 580,
+            'status' => 'paid',
+            'paid_at' => now(),
+            'customer_lat' => 30.2710150,
+            'customer_lng' => 77.9926317,
+            'distance_m' => 350,
+        ]);
+
+        $list = $this->getJson('/api/v1/admin/orders?scope=kitchen')->json('data.orders');
+        $found = collect($list)->firstWhere('id', $order->id);
+
+        $this->assertNotNull($found, 'Order kitchen list me dikhna chahiye.');
+        $this->assertSame('H.No 12, Lane 3, Clement Town', $found['delivery_address']);
+        $this->assertEqualsWithDelta(30.2710150, (float) $found['customer_lat'], 0.0000001);
+        $this->assertEqualsWithDelta(77.9926317, (float) $found['customer_lng'], 0.0000001);
+        $this->assertSame(350, $found['distance_m']);
+    }
+
     public function test_customer_history_exposes_fulfillment_and_split(): void
     {
         $user = User::factory()->create();

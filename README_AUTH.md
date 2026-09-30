@@ -22,7 +22,7 @@ Success 200:
 { "success": true, "message": "OTP sent successfully.",
   "data": { "expires_in_seconds": 300, "resend_available_in": 30, "dev_otp": "591080" } }
 ```
-Note: `dev_otp` is only returned when `OTP_DUMMY=true` or `APP_DEBUG=true`. Remove it once a real SMS provider is connected.
+Note: OTP kabhi response me nahi aata — wo sirf server log me likha jata hai (`Log::info('DevRatna OTP', ...)`). Screen pe koi dev code nahi dikhta.
 
 ### 2. POST /auth/verify-otp
 Body: `{ "phone": "9897012345", "otp": "4821", "name": "Rahul (first login)" }`

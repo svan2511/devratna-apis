@@ -24,7 +24,7 @@ class OtpService
     ) {}
 
     /**
-     * @return array{expires_in_seconds: int, dev_otp?: string, resend_available_in: int}
+     * @return array{expires_in_seconds: int, resend_available_in: int}
      *
      * @throws ValidationException
      */
@@ -63,19 +63,14 @@ class OtpService
             ]);
         });
 
-        // Dummy mode: no real SMS, write the code to the log instead.
+        // No real SMS provider — OTP sirf server log me likha jata hai.
+        // Response me kabhi OTP mat bhejo (screen pe dev code dikhana band).
         Log::info('DevRatna OTP', ['phone' => $phone, 'otp' => $plain]);
 
-        $result = [
+        return [
             'expires_in_seconds' => $expiryMinutes * 60,
             'resend_available_in' => $cooldown,
         ];
-
-        if ((bool) config('otp.dummy', true) || config('app.debug', false)) {
-            $result['dev_otp'] = $plain;
-        }
-
-        return $result;
     }
 
     /**

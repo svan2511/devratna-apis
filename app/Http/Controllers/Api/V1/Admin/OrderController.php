@@ -138,6 +138,10 @@ class OrderController extends Controller
             'fulfillment_status' => $order->fulfillment_status ?? 'new',
             'kitchen_note' => $order->kitchen_note,
             'delivery_address' => $order->delivery_address,
+            // Exact GPS pin + shop se doori — delivery ke liye admin ko chahiye.
+            'customer_lat' => $order->customer_lat !== null ? (float) $order->customer_lat : null,
+            'customer_lng' => $order->customer_lng !== null ? (float) $order->customer_lng : null,
+            'distance_m' => $order->distance_m !== null ? (int) $order->distance_m : null,
             'failure_reason' => $order->failure_reason,
             'created_at' => $order->created_at?->toIso8601String(),
             'paid_at' => $order->paid_at?->toIso8601String(),
