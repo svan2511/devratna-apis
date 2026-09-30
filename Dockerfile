@@ -4,8 +4,9 @@ WORKDIR /app
 COPY composer.json composer.lock* ./
 RUN composer install --no-dev --optimize-autoloader --prefer-dist --no-scripts --no-interaction --ignore-platform-reqs
 
-# Stage 2: Final image - PHP 8.3 FPM + Nginx + Supervisor
-FROM php:8.3-fpm-alpine
+# Stage 2: Final image - PHP 8.4 FPM + Nginx + Supervisor
+# (8.4 required: symfony/http-foundation v8.1 needs PHP >=8.4.1 property hooks)
+FROM php:8.4-fpm-alpine
 
 # Install packages + GD deps + netcat for entrypoint DB wait
 RUN apk update && apk add --no-cache \
