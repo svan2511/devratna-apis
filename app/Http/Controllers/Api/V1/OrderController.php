@@ -182,7 +182,8 @@ class OrderController extends Controller
             'razorpay' => [
                 'key_id' => $keyId,
                 'order_id' => $resp->json('id'),
-                'amount' => $total * 100,
+                // Full payable (food + delivery) — customer se poora paisa tabhi 100% payment complete.
+                'amount' => $payable * 100,
                 'currency' => 'INR',
             ],
         ], 'Order created. Complete the payment.');
@@ -227,6 +228,51 @@ class OrderController extends Controller
             Log::warning('DevRatna order failed signature verification.', ['order_id' => $order->id]);
 
             return $this->failure('Payment verification failed. If money was deducted it will be refunded.', 422);
+        }
+
+        // --- 100% capture confirm (server-to-server) BEFORE paid + notification ---
+        // Signature sirf ye kehta hai ki Razorpay ne payment banaya; paisa pakka
+        // tabhi jab status=captured. Tabhi order paid hoga aur tabhi push jayegi.
+        $keyId = (string) config('services.razorpay.key_id');
+        $keySecret = (string) config('services.razorpay.key_secret');
+        if ($keyId !== '' && $keySecret !== '') {
+            try {
+                $payResp = Http::withBasicAuth($keyId, $keySecret)
+                    ->timeout(10)
+                    ->get("https://api.razorpay.com/v1/payments/{$data['razorpay_payment_id']}");
+                if ($payResp->successful()) {
+                    $payment = $payResp->json();
+                    if (($payment['order_id'] ?? '') !== $data['razorpay_order_id']) {
+                        return $this->failure('Payment details do not match this order.', 422);
+                    }
+                    if (($payment['status'] ?? '') !== 'captured') {
+                        // Authorized but not captured (manual-capture accounts) — abhi capture karo.
+                        $authAmount = (int) ($payment['amount'] ?? 0);
+                        if ($authAmount > 0) {
+                            $cap = Http::withBasicAuth($keyId, $keySecret)
+                                ->timeout(10)
+                                ->post(
+                                    "https://api.razorpay.com/v1/payments/{$data['razorpay_payment_id']}/capture",
+                                    ['amount' => $authAmount, 'currency' => $payment['currency'] ?? 'INR']
+                                );
+                            if ($cap->successful()) {
+                                $payment = $cap->json();
+                            }
+                        }
+                        if (($payment['status'] ?? '') !== 'captured') {
+                            Log::warning('DevRatna payment not fully captured at verification.', [
+                                'order_id' => $order->id,
+                                'rzp_status' => $payment['status'] ?? 'unknown',
+                            ]);
+
+                            return $this->failure('Payment is not fully captured yet. If money was deducted it will be refunded automatically.', 422);
+                        }
+                    }
+                }
+            } catch (Throwable $e) {
+                // Capture-check khud fail ho to signature pe bharosa (webhook safety net hai).
+                Log::warning('DevRatna capture-check failed, using signature result.', ['order_id' => $order->id]);
+            }
         }
 
         $order->update([
