@@ -13,6 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Render/Cloudflare jaise proxy ke peeche real client IP ke liye.
+        // Bina iske sab users ek IP dikhte hain aur throttle bucket shared ho jata hai.
+        // (Kisi bhi server — Render, Hostinger, Cloudflare — pe safe.)
+        $middleware->trustProxies(at: '*');
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
         ]);

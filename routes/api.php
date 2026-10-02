@@ -22,21 +22,21 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
     // Public menu catalogue.
-    Route::get('menu', [MenuController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('menu', [MenuController::class, 'index'])->middleware('throttle:catalog');
     // Public home banners (admin panel se; empty = app fallback slides).
-    Route::get('banners', [BannerController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('banners', [BannerController::class, 'index'])->middleware('throttle:catalog');
     // Public live offers (checkout strip + bill preview; billing server-side).
-    Route::get('offers', [OfferController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('offers', [OfferController::class, 'index'])->middleware('throttle:catalog');
     // Public shop status (open/closed + charges) — app banner ke liye.
-    Route::get('shop-status', [ShopController::class, 'status'])->middleware('throttle:60,1');
+    Route::get('shop-status', [ShopController::class, 'status'])->middleware('throttle:catalog');
     // Razorpay server callback — public (HMAC verified), source of truth for payment status.
     Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle'])
-        ->middleware('throttle:120,1');
-    // Public routes — rate limited against brute force.
+        ->middleware('throttle:catalog');
+    // OTP routes — phone+IP based alag limiter (polling kabhi quota nahi khayegi).
     Route::post('auth/request-otp', [AuthController::class, 'requestOtp'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:otp');
     Route::post('auth/verify-otp', [AuthController::class, 'verifyOtp'])
-        ->middleware('throttle:15,1');
+        ->middleware('throttle:otp-verify');
 
     // Protected routes — Sanctum Bearer token required.
     Route::middleware('auth:sanctum')->group(function (): void {
@@ -54,7 +54,7 @@ Route::prefix('v1')->group(function (): void {
 
     // ---------- Admin dashboard (email+password, is_admin only) ----------
     Route::prefix('admin')->group(function (): void {
-        Route::post('login', [AdminAuthController::class, 'login'])->middleware('throttle:10,1');
+        Route::post('login', [AdminAuthController::class, 'login'])->middleware('throttle:admin-login');
 
         Route::middleware(['auth:sanctum', 'admin'])->group(function (): void {
             Route::get('me', [AdminAuthController::class, 'me']);
