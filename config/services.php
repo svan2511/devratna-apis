@@ -37,6 +37,8 @@ return [
     | Orders are accepted only within SHOP_RADIUS_M metres of the shop
     | and only when the food bill is at least MIN_ORDER_AMOUNT rupees.
     | DELIVERY_CHARGE rupees flat delivery is added on every order.
+    | DELIVERY_MODE = fixed (flat charge) ya distance (slab-wise).
+    | Distance mode: FREE_UPTO_M tak BASE, uske baad har 500m pe PER_500M extra.
     |
     */
 
@@ -46,6 +48,10 @@ return [
         'radius_m' => env('SHOP_RADIUS_M', 1000),
         'min_order' => env('MIN_ORDER_AMOUNT', 500),
         'delivery_charge' => env('DELIVERY_CHARGE', 40),
+        'delivery_mode' => env('DELIVERY_MODE', 'fixed'),
+        'delivery_base' => env('DELIVERY_BASE', 40),
+        'delivery_free_m' => env('DELIVERY_FREE_M', 1000),
+        'delivery_per_500m' => env('DELIVERY_PER_500M', 4),
     ],
 
     'razorpay' => [

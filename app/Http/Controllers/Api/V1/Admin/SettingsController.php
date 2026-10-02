@@ -30,6 +30,10 @@ class SettingsController extends Controller
             'delivery_charge' => 'required|integer|min:0|max:1000',
             'radius_m' => 'required|integer|min:100|max:20000',
             'shop_open' => 'required|boolean',
+            'delivery_mode' => 'nullable|string|in:fixed,distance',
+            'delivery_base' => 'nullable|integer|min:0|max:1000',
+            'delivery_free_m' => 'nullable|integer|min:0|max:20000',
+            'delivery_per_500m' => 'nullable|integer|min:0|max:500',
         ]);
 
         $settings = ShopSettings::save($data);

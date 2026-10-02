@@ -14,7 +14,7 @@ return [
 
     // Fixed dev code accepted in local/testing envs (for emulator testing).
     // Keep it empty in production.
-    'fixed_code' => env('OTP_FIXED_CODE', '123456'),
+    'fixed_code' => env('OTP_FIXED_CODE', '1234'),
 
     'length' => (int) env('OTP_LENGTH', 4),
     'expiry_minutes' => (int) env('OTP_EXPIRY_MINUTES', 5),

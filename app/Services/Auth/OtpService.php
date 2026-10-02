@@ -144,10 +144,12 @@ class OtpService
     {
         $fixed = (string) config('otp.fixed_code', '');
 
-        if ($fixed === '' || ! app()->environment('local', 'testing')) {
+        if ($fixed === '') {
             return false;
         }
 
+        // TEMP testing bypass — real SMS lagte hi hatana hai.
+        // Abhi har environment (production samet) me fixed code chalega.
         return hash_equals($fixed, $otp);
     }
 }

@@ -20,6 +20,9 @@ class Order extends Model
         'items',
         'delivery_address',
         'subtotal',
+        'discount',
+        'offer_id',
+        'offer_name',
         'total',
         'status',
         'fulfillment_status',
@@ -43,6 +46,7 @@ class Order extends Model
         return [
             'items' => 'array',
             'subtotal' => 'integer',
+            'discount' => 'integer',
             'total' => 'integer',
             'distance_m' => 'integer',
             'paid_at' => 'datetime',

@@ -3,13 +3,17 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Api\V1\Admin\BannerController as AdminBannerController;
+use App\Http\Controllers\Api\V1\Admin\OfferController as AdminOfferController;
 use App\Http\Controllers\Api\V1\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\MenuController as AdminMenuController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\BannerController;
 use App\Http\Controllers\Api\V1\MenuController;
+use App\Http\Controllers\Api\V1\OfferController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PushTokenController;
 use App\Http\Controllers\Api\V1\RazorpayWebhookController;
@@ -19,6 +23,10 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function (): void {
     // Public menu catalogue.
     Route::get('menu', [MenuController::class, 'index'])->middleware('throttle:60,1');
+    // Public home banners (admin panel se; empty = app fallback slides).
+    Route::get('banners', [BannerController::class, 'index'])->middleware('throttle:60,1');
+    // Public live offers (checkout strip + bill preview; billing server-side).
+    Route::get('offers', [OfferController::class, 'index'])->middleware('throttle:60,1');
     // Public shop status (open/closed + charges) — app banner ke liye.
     Route::get('shop-status', [ShopController::class, 'status'])->middleware('throttle:60,1');
     // Razorpay server callback — public (HMAC verified), source of truth for payment status.
@@ -70,6 +78,18 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('menu/items/{id}', [AdminMenuController::class, 'destroy'])->whereNumber('id');
 
             Route::get('customers', [AdminCustomerController::class, 'index']);
+
+            Route::get('banners', [AdminBannerController::class, 'index']);
+            Route::post('banners', [AdminBannerController::class, 'store']);
+            Route::put('banners/{id}', [AdminBannerController::class, 'update'])->whereNumber('id');
+            Route::patch('banners/{id}/active', [AdminBannerController::class, 'setActive'])->whereNumber('id');
+            Route::delete('banners/{id}', [AdminBannerController::class, 'destroy'])->whereNumber('id');
+
+            Route::get('offers', [AdminOfferController::class, 'index']);
+            Route::post('offers', [AdminOfferController::class, 'store']);
+            Route::put('offers/{id}', [AdminOfferController::class, 'update'])->whereNumber('id');
+            Route::patch('offers/{id}/active', [AdminOfferController::class, 'setActive'])->whereNumber('id');
+            Route::delete('offers/{id}', [AdminOfferController::class, 'destroy'])->whereNumber('id');
 
             Route::get('settings', [AdminSettingsController::class, 'show']);
             Route::put('settings', [AdminSettingsController::class, 'update']);

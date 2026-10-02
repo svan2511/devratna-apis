@@ -7,7 +7,9 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Services\DeliveryCharge;
 use App\Services\ExpoPushService;
+use App\Services\OfferEngine;
 use App\Services\ShopSettings;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -68,6 +70,7 @@ class OrderController extends Controller
         $menu = MenuItem::query()
             ->whereIn('id', collect($data['items'])->pluck('id'))
             ->where('is_available', true)
+            ->with('category')
             ->get()
             ->keyBy('id');
 
@@ -101,11 +104,18 @@ class OrderController extends Controller
             $total += $unit * $line['qty'];
         }
 
+        // --- Offer auto-apply (best ek) — discount + free lines server decide karta hai ---
+        $engineLines = array_map(fn (array $l) => $l + [
+            'category' => (string) ($menu[$l['id']]->category->slug ?? ''),
+        ], $lines);
+        $applied = OfferEngine::bestFor($engineLines, $total);
+        $discount = (int) $applied['discount'];
+        $lines = array_merge($lines, $applied['freeLines']);
+
         // --- Condition 2: minimum food bill (delivery is extra) ---
         $minOrder = $shop['min_order'];
-        $delivery = $shop['delivery_charge'];
         if ($total < $minOrder) {
-            return $this->failure("Minimum food order is ₹{$minOrder} (+ ₹{$delivery} delivery). Add food worth ₹".($minOrder - $total).' more.', 422);
+            return $this->failure("Minimum food order is ₹{$minOrder} (+ delivery extra). Add food worth ₹".($minOrder - $total).' more.', 422);
         }
 
         // --- Condition 1: geofence around the shop ---
@@ -124,14 +134,20 @@ class OrderController extends Controller
             return $this->failure("We deliver within {$radiusLabel} of Dev Ratna Diner only. You seem to be outside the delivery area.", 422);
         }
 
-        // --- Flat delivery on every order ---
-        $payable = $total + $delivery;
+        // --- Delivery charge (fixed ya distance-slab — admin Settings se) ---
+        $delivery = DeliveryCharge::for((int) round($distance), $shop);
+
+        // --- Flat delivery on every order (offer discount ke baad) ---
+        $payable = $total - $discount + $delivery;
 
         $order = Order::create([
             'user_id' => $request->user()->id,
             'items' => $lines,
             'delivery_address' => $data['address'] ?? null,
             'subtotal' => $total,
+            'discount' => $discount,
+            'offer_id' => $applied['offer']?->id,
+            'offer_name' => $applied['offer']?->name,
             'total' => $payable,
             'status' => 'pending',
             'customer_lat' => $data['lat'],
@@ -176,6 +192,8 @@ class OrderController extends Controller
             'order' => [
                 'id' => $order->id,
                 'total' => $order->total,
+                'discount' => $order->discount ?? 0,
+                'offer_name' => $order->offer_name,
                 'status' => $order->status,
                 'items' => $lines,
             ],
@@ -336,6 +354,8 @@ class OrderController extends Controller
         return [
             'id' => $order->id,
             'subtotal' => $order->subtotal,
+            'discount' => $order->discount ?? 0,
+            'offer_name' => $order->offer_name,
             'total' => $order->total,
             'status' => $order->status,
             'fulfillment_status' => $order->fulfillment_status ?? 'new',
