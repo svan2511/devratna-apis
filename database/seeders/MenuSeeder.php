@@ -129,8 +129,6 @@ class MenuSeeder extends Seeder
             'Samosa',
             'Chole Samosa',
             'Dahi Samosa',
-            'Pyaz Paratha',
-            'Mineral Water',
             'Badam Shake',
             'Cold Drink',
         ];
