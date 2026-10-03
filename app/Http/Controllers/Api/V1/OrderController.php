@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Services\DeliveryCharge;
-use App\Services\ExpoPushService;
 use App\Services\OfferEngine;
 use App\Services\ShopSettings;
 use App\Traits\ApiResponse;
@@ -304,12 +303,10 @@ class OrderController extends Controller
             'total' => $order->total,
             'source' => 'verify',
         ]);
-        app(ExpoPushService::class)->notifyUser(
-            $order->user,
-            'Payment ho gaya! 🎉',
-            "Aapka payment safal raha (₹{$order->total}) — khana abhi ban raha hai!",
-            ['type' => 'order_confirmed', 'order_id' => $order->id],
-        );
+        // NOTE: Push yaha se nahi bhejte — Razorpay sheet band hone se pehle
+        // banner gir jata tha. Single source of truth webhook (payment.captured)
+        // hai; push wahi se jayegi. App ko instant feedback verify response +
+        // success alert se mil jata hai.
 
         return $this->success(['order' => $this->publicOrder($order)], 'Payment successful! Your order is confirmed.');
     }

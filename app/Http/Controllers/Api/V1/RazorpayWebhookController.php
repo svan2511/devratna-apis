@@ -113,7 +113,10 @@ class RazorpayWebhookController extends Controller
             'source' => $source,
         ]);
 
-        // Sirf transition pe — verify() pehle kar chuka ho to dobara nahi.
+        // Single source of truth: push SIRF yaha se (payment.captured pe).
+        // verify() sirf DB paid karta hai, push nahi — taaki Razorpay sheet
+        // band hone se pehle banner na gire. isPaid guard duplicate webhook
+        // retry pe dobara push rokta hai.
         app(\App\Services\ExpoPushService::class)->notifyUser(
             $order->user,
             'Order confirmed! 🎉',
