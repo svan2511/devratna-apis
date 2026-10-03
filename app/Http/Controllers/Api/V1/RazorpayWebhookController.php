@@ -113,16 +113,14 @@ class RazorpayWebhookController extends Controller
             'source' => $source,
         ]);
 
-        // Single source of truth: push SIRF yaha se (payment.captured pe).
-        // verify() sirf DB paid karta hai, push nahi — taaki Razorpay sheet
-        // band hone se pehle banner na gire. isPaid guard duplicate webhook
-        // retry pe dobara push rokta hai.
-        app(\App\Services\ExpoPushService::class)->notifyUser(
-            $order->user,
-            'Order confirmed! 🎉',
-            "Payment successful. Order #{$order->id} • ₹{$order->total} — khana ban raha hai!",
-            ['type' => 'order_confirmed', 'order_id' => $order->id],
-        );
+        // Payment-confirm push yaha se NAHI bhejte.
+        // Webhook (payment.captured) Razorpay success ke 3-10 sec me hi aa jata
+        // hai — tab tak app me "Confirming payment…" overlay khula hota hai aur
+        // user ko lagta hai payment screen se PEHLE notification aa gayi.
+        // Isliye payment ka instant feedback sirf verify() response + app ke
+        // success alert se milta hai. Pehli push tab jayegi jab kitchen status
+        // badlega (preparing/ready/...) — Admin OrderController se.
+        // isPaid guard duplicate webhook retry pe dobara kaam rokta hai.
     }
 
     private function markFailed(Order $order, string $reason, string $source): void

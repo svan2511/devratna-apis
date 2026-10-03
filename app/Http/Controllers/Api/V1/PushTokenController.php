@@ -27,10 +27,20 @@ class PushTokenController extends Controller
 
         $user = $request->user();
 
+        $token = trim($data['token']);
+
         PushToken::query()->updateOrCreate(
-            ['token' => trim($data['token'])],
+            ['token' => $token],
             ['user_id' => $user->id, 'platform' => $data['platform'] ?? null],
         );
+
+        // Purani installs (purana build / purana phone) ke stale tokens hatao.
+        // Nahi to push purani Expo-icon wali app pe bhi jati rahegi aur user
+        // confuse hoga. Ek user = ek active install.
+        PushToken::query()
+            ->where('user_id', $user->id)
+            ->where('token', '!=', $token)
+            ->delete();
 
         return $this->success(null, 'Push token saved.');
     }
