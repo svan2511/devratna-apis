@@ -28,6 +28,13 @@ class ExpoPushService
         $tokens = $user->pushTokens()->pluck('token')->all();
         $tokens = array_values(array_filter($tokens, fn ($t) => str_starts_with((string) $t, 'ExponentPushToken[')));
 
+        // Debug proof: kaunsi push kitne installs pe ja rahi hai (ghost app pakadne ke liye).
+        Log::info('DevRatna expo push targets.', [
+            'user_id' => (int) $user->id,
+            'token_count' => count($tokens),
+            'tokens' => array_map(fn ($t) => mb_substr((string) $t, 0, 28).'…', $tokens),
+        ]);
+
         if ($tokens === []) {
             return;
         }
