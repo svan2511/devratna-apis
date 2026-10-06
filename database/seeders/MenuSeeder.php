@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\Category;
+use App\Models\MenuItem;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Full catalogue transcribed from the printed menu card (new-menu.png).
@@ -32,12 +32,14 @@ class MenuSeeder extends Seeder
 
             $ids = Category::query()->pluck('id', 'slug');
 
-            // Truncate (not delete) so auto-increment restarts and ids
-            // stay 1–105 on every re-seed. Never insert/delete rows here —
-            // only append at the END of items() with the next free id.
-            Schema::disableForeignKeyConstraints();
-            DB::table('menu_items')->truncate();
-            Schema::enableForeignKeyConstraints();
+            // Redeploy-safe: items already seeded = skip (no duplicates,
+            // no truncate, admin availability/rate edits preserved).
+            // First install (empty table) pe hi full insert hota hai.
+            if (MenuItem::query()->exists()) {
+                $this->command?->info('Menu items already seeded, skipping (admin edits preserved).');
+
+                return;
+            }
 
             $order = 0;
             $id = 0;

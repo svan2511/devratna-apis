@@ -28,9 +28,16 @@ done
 
 echo "PostgreSQL is up!"
 
-# Run Migrations
+# Run Migrations — NEVER fresh in production (fresh wipes users/orders/tokens
+# on every restart/sleep-wake; migrate only applies pending migrations).
 echo "Running database migrations..."
-php artisan migrate:fresh --seed --force
+php artisan migrate --force
+
+# Idempotent seeds — safe on every boot/redeploy, no duplicates, no wipe:
+# - AdminUserSeeder: updateOrCreate by email (password refresh only).
+# - MenuSeeder: categories sync + items seeded ONLY when empty (admin edits preserved).
+echo "Seeding (idempotent)..."
+php artisan db:seed --force || true
 
 
 # Final Optimizations (After keys are set)
