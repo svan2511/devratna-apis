@@ -54,6 +54,10 @@ class ExpoPushService
             'body' => $body,
             'data' => $data,
             'sound' => 'order_alert.wav',
+            // Android small icon native config (notification-icon.png) se aata hai;
+            // color payload se taaki icon background brand terracotta rahe.
+            'color' => '#C65D3A',
+            'priority' => 'high',
             'channelId' => 'orders',
         ], $tokens);
 
