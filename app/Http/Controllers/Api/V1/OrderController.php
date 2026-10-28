@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Services\DeliveryCharge;
+use App\Services\DeliveryTracking;
 use App\Services\OfferEngine;
 use App\Services\ShopSettings;
 use App\Traits\ApiResponse;
@@ -31,6 +32,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $orders = Order::query()
+            ->with('deliveryPartner.user:id,name,phone')
             ->where('user_id', $request->user()->id)
             ->latest()
             ->limit(50)
@@ -38,6 +40,68 @@ class OrderController extends Controller
             ->map(fn (Order $order) => $this->publicOrder($order));
 
         return $this->success($orders, 'Order history.');
+    }
+
+    /**
+     * Live delivery tracking for the order owner. Polled by the customer app
+     * every few seconds; returns the last rider breadcrumb, ETA and stale flag.
+     */
+    public function tracking(Request $request, int $id): JsonResponse
+    {
+        $order = Order::query()
+            ->with(['deliveryPartner.user:id,name,phone', 'latestLocation'])
+            ->where('user_id', $request->user()->id)
+            ->findOrFail($id);
+
+        if (! in_array($order->status, ['paid'], true) && $order->delivered_at === null) {
+            return $this->failure('Live tracking is available after payment.', 422);
+        }
+
+        $location = $order->latestLocation;
+        $rider = $order->deliveryPartner;
+        $delivered = $order->fulfillment_status === 'delivered' || $order->delivered_at !== null;
+
+        $distance = null;
+        $eta = null;
+        if ($delivered) {
+            $distance = 0;
+            $eta = 0;
+        } elseif ($location !== null && $order->customer_lat !== null && $order->customer_lng !== null) {
+            $distance = (int) round(DeliveryTracking::distanceMetres(
+                (float) $location->latitude,
+                (float) $location->longitude,
+                (float) $order->customer_lat,
+                (float) $order->customer_lng,
+            ));
+            $eta = DeliveryTracking::etaMinutes($location, $order);
+        }
+
+        $locationPayload = DeliveryTracking::locationPayload($location);
+
+        return $this->success([
+            'order' => $this->publicOrder($order),
+            'shop' => [
+                'lat' => (float) config('services.shop.lat', 30.2710150),
+                'lng' => (float) config('services.shop.lng', 77.9926317),
+            ],
+            'destination' => $order->customer_lat !== null && $order->customer_lng !== null ? [
+                'lat' => (float) $order->customer_lat,
+                'lng' => (float) $order->customer_lng,
+            ] : null,
+            'rider' => $rider?->user ? [
+                'id' => $rider->id,
+                'name' => $rider->user->name,
+                'phone' => $rider->user->phone,
+                'vehicle_type' => $rider->vehicle_type,
+                'vehicle_number' => $rider->vehicle_number,
+                'is_online' => $rider->is_online,
+            ] : null,
+            'rider_location' => $locationPayload,
+            'distance_to_customer_m' => $distance,
+            'eta_minutes' => $eta,
+            'arrived' => $order->arrived_at !== null,
+            'is_stale' => $locationPayload['is_stale'] ?? false,
+        ], 'Tracking loaded.');
     }
 
     /**
@@ -360,6 +424,16 @@ class OrderController extends Controller
             'failure_reason' => $order->failure_reason,
             'items' => $order->items,
             'delivery_address' => $order->delivery_address,
+            'rider' => $order->deliveryPartner?->user ? [
+                'name' => $order->deliveryPartner->user->name,
+                'phone' => $order->deliveryPartner->user->phone,
+                'vehicle_type' => $order->deliveryPartner->vehicle_type,
+                'vehicle_number' => $order->deliveryPartner->vehicle_number,
+            ] : null,
+            'rider_assigned_at' => $order->rider_assigned_at?->toIso8601String(),
+            'rider_accepted_at' => $order->rider_accepted_at?->toIso8601String(),
+            'picked_up_at' => $order->picked_up_at?->toIso8601String(),
+            'arrived_at' => $order->arrived_at?->toIso8601String(),
             'created_at' => $order->created_at?->toIso8601String(),
             'paid_at' => $order->paid_at?->toIso8601String(),
             'ready_at' => $order->ready_at?->toIso8601String(),

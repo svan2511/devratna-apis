@@ -26,6 +26,7 @@ class UserResource extends JsonResource
             'phone_verified' => $this->phone_verified_at !== null,
             'phone_verified_at' => $this->phone_verified_at?->toIso8601String(),
             'is_profile_complete' => $this->name !== null && $this->name !== '',
+            'is_rider' => (bool) $this->is_rider,
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }

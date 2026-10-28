@@ -9,11 +9,12 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-    #[Fillable(['name', 'phone', 'default_address', 'email', 'password', 'phone_verified_at', 'is_admin'])]
+#[Fillable(['name', 'phone', 'default_address', 'email', 'password', 'phone_verified_at', 'is_admin', 'is_rider'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,12 +33,18 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'is_rider' => 'boolean',
         ];
     }
 
     public function isAdmin(): bool
     {
         return (bool) $this->is_admin;
+    }
+
+    public function isRider(): bool
+    {
+        return (bool) $this->is_rider;
     }
 
     public function hasVerifiedPhone(): bool
@@ -59,5 +66,10 @@ class User extends Authenticatable
     public function pushTokens(): HasMany
     {
         return $this->hasMany(PushToken::class);
+    }
+
+    public function deliveryPartner(): HasOne
+    {
+        return $this->hasOne(DeliveryPartner::class);
     }
 }

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CategoryResource;
 use App\Repositories\Contracts\MenuRepositoryInterface;
+use App\Services\CatalogCache;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Throwable;
@@ -23,9 +24,11 @@ class MenuController extends Controller
     public function index(): JsonResponse
     {
         try {
-            $categories = $this->menu->fullMenu();
+            $categories = CatalogCache::rememberMenu(
+                fn (): array => CategoryResource::collection($this->menu->fullMenu())->resolve()
+            );
 
-            return $this->success(CategoryResource::collection($categories), 'Menu loaded.');
+            return $this->success($categories, 'Menu loaded.');
         } catch (Throwable $e) {
             report($e);
 

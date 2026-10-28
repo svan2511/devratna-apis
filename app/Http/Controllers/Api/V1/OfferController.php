@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Offer;
+use App\Services\CatalogCache;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use App\Models\Offer;
 use Throwable;
 
 /**
@@ -21,9 +22,11 @@ class OfferController extends Controller
     public function index(): JsonResponse
     {
         try {
-            $offers = Offer::query()->live()->ordered()->with('freeItem:id,name')->get()->map(
-                fn (Offer $o) => $this->publicOffer($o)
-            )->values();
+            $offers = CatalogCache::rememberOffers(function (): array {
+                return Offer::query()->live()->ordered()->with('freeItem:id,name')->get()->map(
+                    fn (Offer $o) => $this->publicOffer($o)
+                )->values()->all();
+            });
 
             return $this->success($offers, 'Offers loaded.');
         } catch (Throwable $e) {

@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\Offer;
+use App\Services\CatalogCache;
 use App\Traits\ApiResponse;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
  * Offer manager — discount/free-item deals + live window.
- * Billing server-side (OfferEngine) turant lagu hota hai.
+ * Billing server-side (OfferEngine) turant lagu hota hai; public offers +
+ * banners cache har write ke baad flush hota hai.
  */
 class OfferController extends Controller
 {
@@ -35,6 +39,7 @@ class OfferController extends Controller
         $this->validateTarget($data);
 
         $offer = Offer::create($this->payload($data));
+        CatalogCache::flush();
 
         return $this->success(['offer' => $offer->fresh('freeItem')], 'Offer created.', 201);
     }
@@ -46,6 +51,7 @@ class OfferController extends Controller
         $this->validateTarget($data);
 
         $offer->update($this->payload($data, $offer));
+        CatalogCache::flush();
 
         return $this->success(['offer' => $offer->fresh('freeItem')], 'Offer updated.');
     }
@@ -56,6 +62,7 @@ class OfferController extends Controller
         $data = $request->validate(['is_active' => 'required|boolean']);
 
         $offer->update(['is_active' => (bool) $data['is_active']]);
+        CatalogCache::flush();
 
         return $this->success(
             ['offer' => $offer->fresh()],
@@ -67,6 +74,7 @@ class OfferController extends Controller
     {
         $offer = Offer::query()->findOrFail($id);
         $offer->delete();
+        CatalogCache::flush();
 
         return $this->success(null, 'Offer deleted.');
     }
@@ -97,11 +105,11 @@ class OfferController extends Controller
 
         // Category/item target ho to value lazmi — warna offer ya to sab pe lagegi ya kahin nahi.
         if (in_array($data['target_type'], ['category', 'item'], true) && trim((string) ($data['target_value'] ?? '')) === '') {
-            abort(response()->json(['success' => false, 'message' => 'Target chuno — kaunsi category ya dish pe offer hai.'], 422));
+            abort(response()->json(['success' => false, 'message' => 'Select a target — which category or dish the offer applies to.'], 422));
         }
         // Discount type ho to value lazmi.
         if (in_array($data['discount_type'], ['percent', 'flat'], true) && (int) ($data['discount_value'] ?? 0) <= 0) {
-            abort(response()->json(['success' => false, 'message' => 'Discount value 0 se zyada rakho.'], 422));
+            abort(response()->json(['success' => false, 'message' => 'Discount value must be greater than 0.'], 422));
         }
 
         return $data;
@@ -116,16 +124,16 @@ class OfferController extends Controller
     {
         if (($data['target_type'] ?? 'all') === 'category' && ! empty($data['target_value'])) {
             abort_unless(
-                \App\Models\Category::query()->where('slug', $data['target_value'])->exists(),
+                Category::query()->where('slug', $data['target_value'])->exists(),
                 422,
-                'Ye category slug maujood nahi hai.'
+                'This category slug does not exist.'
             );
         }
         if (($data['target_type'] ?? '') === 'item' && ! empty($data['target_value'])) {
             abort_unless(
                 MenuItem::query()->where('id', (int) $data['target_value'])->exists(),
                 422,
-                'Ye dish id maujood nahi hai.'
+                'This dish ID does not exist.'
             );
         }
     }
@@ -144,7 +152,7 @@ class OfferController extends Controller
         $rawEnds = trim((string) ($data['ends_at'] ?? ''));
         if ($minutes > 0) {
             $start = $rawStart !== '' ? $rawStart : ($existing?->starts_at?->toDateTimeString() ?? now()->toDateTimeString());
-            $ends = \Carbon\Carbon::parse($start)->addMinutes($minutes)->toDateTimeString();
+            $ends = Carbon::parse($start)->addMinutes($minutes)->toDateTimeString();
         } else {
             $start = $rawStart !== '' ? $rawStart : null;
             $ends = $rawEnds !== '' ? $rawEnds : null;

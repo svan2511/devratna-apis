@@ -73,6 +73,7 @@ class ExpoPushService
                 $resp = Http::withHeaders($headers)->timeout(10)->post(self::ENDPOINT, $chunk);
                 if (! $resp->successful()) {
                     Log::warning('DevRatna expo push failed (http).', ['user_id' => $userId, 'status' => $resp->status()]);
+
                     continue;
                 }
                 foreach ((array) $resp->json('data', []) as $ticket) {
@@ -90,6 +91,41 @@ class ExpoPushService
     }
 
     /**
+     * Rider ko naya order assign hua.
+     *
+     * @return array{title: string, body: string}
+     */
+    public static function forRiderAssignment(int $orderId, string $customerName, ?string $address): array
+    {
+        $body = "Order #{$orderId} • {$customerName}";
+        if ($address !== null && trim($address) !== '') {
+            $body .= ' • '.mb_substr(trim($address), 0, 80);
+        }
+
+        return ['title' => 'New delivery assigned', 'body' => $body];
+    }
+
+    /**
+     * Customer ko rider accept karne ki update — naam + vehicle + phone.
+     *
+     * @return array{title: string, body: string}
+     */
+    public static function forCustomerRiderAccepted(
+        string $riderName,
+        string $vehicleType,
+        ?string $vehicleNumber,
+        ?string $phone,
+    ): array {
+        $vehicle = trim($vehicleType.($vehicleNumber !== null && $vehicleNumber !== '' ? ' • '.$vehicleNumber : ''));
+        $contact = $phone !== null && $phone !== '' ? " • 📞 {$phone}" : '';
+
+        return [
+            'title' => 'Rider assigned! 🛵',
+            'body' => "{$riderName} ({$vehicle}) will deliver your order{$contact}.",
+        ];
+    }
+
+    /**
      * Kitchen status → user-friendly Hindi-English push text.
      *
      * @return array{title: string, body: string}|null
@@ -97,11 +133,12 @@ class ExpoPushService
     public static function forFulfillment(int $orderId, int $total, string $status): ?array
     {
         return match ($status) {
-            'preparing' => ['title' => 'Khana ban raha hai! 👨‍🍳', 'body' => 'Humne aapka order kitchen me laga diya hai — fresh aur garam milega!'],
-            'ready' => ['title' => 'Order pack ho gaya! 🛵', 'body' => 'Aapka khana taiyaar hai — rider jald pahunch raha hai.'],
-            'out_for_delivery' => ['title' => 'Rider nikal gaya! 🛵', 'body' => 'Aapka order raste me hai — bas kuch hi minute me pahunch jayega.'],
-            'delivered' => ['title' => 'Enjoy your meal! 😋', 'body' => 'Aapka order deliver ho gaya. Dev Ratna se khane ke liye shukriya!'],
-            'cancelled' => ['title' => 'Order cancel ho gaya', 'body' => 'Aapka order cancel ho gaya hai. Paise refund ho jayenge — koi dikkat ho to dukkan pe call karein.'],
+            'preparing' => ['title' => 'Your food is being prepared! 👨‍🍳', 'body' => 'We have started preparing your order — it will be fresh and hot!'],
+            'ready' => ['title' => 'Your order is packed! 🛵', 'body' => 'Your food is ready — a rider will reach you shortly.'],
+            'out_for_delivery' => ['title' => 'Your rider is on the way! 🛵', 'body' => 'Your order is on its way — it will arrive in a few minutes.'],
+            'arrived' => ['title' => 'Your rider has arrived!', 'body' => 'Your rider is at your door — please collect your order.'],
+            'delivered' => ['title' => 'Enjoy your meal! 😋', 'body' => 'Your order has been delivered. Thank you for ordering from Dev Ratna!'],
+            'cancelled' => ['title' => 'Order cancelled', 'body' => 'Your order has been cancelled. Your refund will be issued — call the shop if you need help.'],
             default => null,
         };
     }

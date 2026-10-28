@@ -6,13 +6,14 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Banner;
+use App\Services\CatalogCache;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
  * Home banner manager — CRUD + active toggle + order.
- * Public app cache ko koi alag invalidation nahi chahiye (direct DB read).
+ * Har write ke baad public catalogue cache flush hota hai.
  */
 class BannerController extends Controller
 {
@@ -43,6 +44,8 @@ class BannerController extends Controller
             'is_active' => (bool) ($data['is_active'] ?? true),
         ]);
 
+        CatalogCache::flush();
+
         return $this->success(['banner' => $banner->fresh()], 'Banner created.', 201);
     }
 
@@ -62,6 +65,8 @@ class BannerController extends Controller
             'is_active' => (bool) ($data['is_active'] ?? $banner->is_active),
         ]);
 
+        CatalogCache::flush();
+
         return $this->success(['banner' => $banner->fresh()], 'Banner updated.');
     }
 
@@ -71,6 +76,7 @@ class BannerController extends Controller
         $data = $request->validate(['is_active' => 'required|boolean']);
 
         $banner->update(['is_active' => (bool) $data['is_active']]);
+        CatalogCache::flush();
 
         return $this->success(
             ['banner' => $banner->fresh()],
@@ -82,6 +88,7 @@ class BannerController extends Controller
     {
         $banner = Banner::query()->findOrFail($id);
         $banner->delete();
+        CatalogCache::flush();
 
         return $this->success(null, 'Banner deleted.');
     }

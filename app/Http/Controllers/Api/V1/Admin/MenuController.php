@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\MenuItem;
+use App\Services\CatalogCache;
 use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ use Throwable;
 
 /**
  * Menu manager — categories + dishes CRUD + availability toggle.
- * Public menu cache ko koi alag invalidation nahi chahiye (direct DB read).
+ * Har write ke baad public catalogue cache flush hota hai.
  */
 class MenuController extends Controller
 {
@@ -48,6 +49,8 @@ class MenuController extends Controller
             'sort_order' => (int) ($data['sort_order'] ?? 0),
         ]);
 
+        CatalogCache::flush();
+
         return $this->success(['category' => $cat], 'Category created.', 201);
     }
 
@@ -61,6 +64,8 @@ class MenuController extends Controller
         $cat = Category::query()->findOrFail($id);
         $cat->update(['name' => trim($data['name']), 'sort_order' => (int) ($data['sort_order'] ?? $cat->sort_order)]);
 
+        CatalogCache::flush();
+
         return $this->success(['category' => $cat->fresh()], 'Category updated.');
     }
 
@@ -68,9 +73,11 @@ class MenuController extends Controller
     {
         $cat = Category::query()->findOrFail($id);
         if ($cat->items()->exists()) {
-            return $this->failure('Is category me dishes hain — pehle unhe move/delete karo.', 422);
+            return $this->failure('This category contains dishes — move or delete them first.', 422);
         }
         $cat->delete();
+
+        CatalogCache::flush();
 
         return $this->success(null, 'Category deleted.');
     }
@@ -104,6 +111,7 @@ class MenuController extends Controller
 
         try {
             $item = MenuItem::create($data);
+            CatalogCache::flush();
 
             return $this->success(['item' => $item->fresh()], 'Dish created.', 201);
         } catch (Throwable $e) {
@@ -118,6 +126,7 @@ class MenuController extends Controller
         $data = $this->validateItem($request);
         $item = MenuItem::query()->findOrFail($id);
         $item->update($data);
+        CatalogCache::flush();
 
         return $this->success(['item' => $item->fresh()], 'Dish updated.');
     }
@@ -127,6 +136,7 @@ class MenuController extends Controller
         $data = $request->validate(['is_available' => 'required|boolean']);
         $item = MenuItem::query()->findOrFail($id);
         $item->update(['is_available' => (bool) $data['is_available']]);
+        CatalogCache::flush();
 
         return $this->success(['item' => $item->fresh()], $item->is_available ? 'Dish is now visible.' : 'Dish hidden from menu.');
     }
@@ -134,6 +144,7 @@ class MenuController extends Controller
     public function destroy(int $id): JsonResponse
     {
         MenuItem::query()->findOrFail($id)->delete();
+        CatalogCache::flush();
 
         return $this->success(null, 'Dish deleted.');
     }

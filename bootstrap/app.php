@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureRider;
+use App\Http\Middleware\ForceJsonForApi;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,9 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // (Kisi bhi server — Render, Hostinger, Cloudflare — pe safe.)
         $middleware->trustProxies(at: '*');
         $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            'admin' => EnsureAdmin::class,
+            'rider' => EnsureRider::class,
         ]);
-        $middleware->append(\App\Http\Middleware\ForceJsonForApi::class);
+        $middleware->append(ForceJsonForApi::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -28,7 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
         // API has no web login page — unauthenticated api/* calls get a
         // clean JSON 401 instead of crashing on missing `login` route.
-        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, Request $request) {
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
             }

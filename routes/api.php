@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Api\V1\Admin\BannerController as AdminBannerController;
-use App\Http\Controllers\Api\V1\Admin\OfferController as AdminOfferController;
 use App\Http\Controllers\Api\V1\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Api\V1\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Api\V1\Admin\MenuController as AdminMenuController;
+use App\Http\Controllers\Api\V1\Admin\OfferController as AdminOfferController;
 use App\Http\Controllers\Api\V1\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Api\V1\Admin\RiderController as AdminRiderController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BannerController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Api\V1\OfferController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PushTokenController;
 use App\Http\Controllers\Api\V1\RazorpayWebhookController;
+use App\Http\Controllers\Api\V1\RiderController;
 use App\Http\Controllers\Api\V1\ShopController;
 use Illuminate\Support\Facades\Route;
 
@@ -48,8 +50,25 @@ Route::prefix('v1')->group(function (): void {
         Route::post('orders', [OrderController::class, 'store'])->middleware('throttle:20,1');
         Route::post('orders/verify', [OrderController::class, 'verify'])->middleware('throttle:20,1');
         Route::post('orders/fail', [OrderController::class, 'fail'])->middleware('throttle:20,1');
+        // Customer live tracking (owner only).
+        Route::get('orders/{id}/tracking', [OrderController::class, 'tracking'])
+            ->whereNumber('id')
+            ->middleware('throttle:120,1');
         // Expo push token (order status notifications).
         Route::post('push-token', [PushTokenController::class, 'store'])->middleware('throttle:20,1');
+
+        // Rider app (OTP user with is_rider=true + active delivery profile).
+        Route::prefix('rider')->middleware('rider')->group(function (): void {
+            Route::get('assignments', [RiderController::class, 'index'])->middleware('throttle:120,1');
+            Route::post('availability', [RiderController::class, 'availability']);
+            Route::get('orders/{id}', [RiderController::class, 'show'])->whereNumber('id');
+            Route::post('orders/{id}/accept', [RiderController::class, 'accept'])->whereNumber('id');
+            Route::post('orders/{id}/pickup', [RiderController::class, 'pickup'])->whereNumber('id');
+            Route::post('orders/{id}/deliver', [RiderController::class, 'deliver'])->whereNumber('id');
+            Route::post('orders/{id}/location', [RiderController::class, 'location'])
+                ->whereNumber('id')
+                ->middleware('throttle:120,1');
+        });
     });
 
     // ---------- Admin dashboard (email+password, is_admin only) ----------
@@ -65,6 +84,12 @@ Route::prefix('v1')->group(function (): void {
             Route::get('orders', [AdminOrderController::class, 'index']);
             Route::get('orders/{id}', [AdminOrderController::class, 'show'])->whereNumber('id');
             Route::patch('orders/{id}/fulfillment', [AdminOrderController::class, 'updateFulfillment'])->whereNumber('id');
+            Route::post('orders/{id}/assign-rider', [AdminOrderController::class, 'assignRider'])->whereNumber('id');
+            Route::post('orders/{id}/unassign-rider', [AdminOrderController::class, 'unassignRider'])->whereNumber('id');
+
+            Route::get('riders', [AdminRiderController::class, 'index']);
+            Route::post('riders', [AdminRiderController::class, 'store']);
+            Route::patch('riders/{id}', [AdminRiderController::class, 'update'])->whereNumber('id');
 
             Route::get('menu/categories', [AdminMenuController::class, 'categories']);
             Route::post('menu/categories', [AdminMenuController::class, 'storeCategory']);

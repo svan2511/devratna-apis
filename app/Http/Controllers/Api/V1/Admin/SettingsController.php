@@ -39,7 +39,7 @@ class SettingsController extends Controller
         $settings = ShopSettings::save($data);
 
         return $this->success(['settings' => array_merge($settings, [
-            'note' => 'Sab settings turant lagu — app, website aur kitchen guard yahi padhte hain.',
+            'note' => 'All settings apply instantly — the app, website and kitchen guard read these values.',
         ])], 'Settings saved.');
     }
 }
